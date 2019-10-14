@@ -4,16 +4,17 @@ function[rel_power]=drift_rel(power,skok,fvz,f_d,f_h) %vypoèítá relativní mocnos
 index=ceil(f_h/fvz*skok);
 index2=ceil(f_d/fvz*skok);
 n=1;
-rel_power(1:length(power))=0;
-
+rel_power(1:round(length(power))/skok)=0;
+ind=int32(1);
 while((n+skok)<length(power))
-    rel_power(n:n+skok)=sum(power(n+index2:n+index))/sum(power(n:n+skok));
+    rel_power(ind)=sum(power(n+index2:n+index))/sum(power(n:n+skok));
     n=n+skok;
+    ind=ind+1;
 end
 
 index=ceil(f_h/fvz*(length(power)-n));
 index2=ceil(f_d/fvz*(length(power)-n));
 
-rel_power(n:end)=sum(power(n+index2:n+index))/sum(power(n:end));
+rel_power(ind)=sum(power(n+index2:n+index))/sum(power(n:end));
 
 end

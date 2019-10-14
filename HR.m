@@ -1,4 +1,4 @@
-function[sig_out]=HR(data,fvz) % vstup data-EKG, fvz-vzorkovací frekvence (vıstup prùbìh tepové frekvence)
+function[sig_out]=HR(data,skok,fvz) % vstup data-EKG, fvz-vzorkovací frekvence, skok- decimace odpovídající vıpoètu spektrogramu (vıstup prùbìh tepové frekvence)
 
 filter=fir1(1000,[8/(fvz/2) 20/(fvz/2)],'bandpass');
 data=filtfilt(filter,1,data);
@@ -26,19 +26,15 @@ RR=[RR(1) RR RR(end)];
 lok=[lok (length(data)/fvz-1/fvz)];
 
 %% úprava vısledného signálu tepové frekvence
-sig_out=resample(RR,lok,1000,'spline'); % pøevzorkování na shodnou fvz jako je signál EKG
+sig_out=resample(RR,lok,fvz/skok,'spline'); % pøevzorkování na shodnou fvz jako ostatní pøíznaky
 sig_out=60./sig_out; % pøevod na TF  [/min]
 
 
 % oøezání odlehlıch hodnot
-m=median(sig_out); 
-s=std(sig_out);
-
-
 sig_out(abs(sig_out)>350)=350;
 sig_out(sig_out<0)=0;
 % filtrace dolní propustí pro vyhlazení prùbìhu TF
-filter=fir1(1500,[1.5/(fvz/2)],'low');
-sig_out=filtfilt(filter,1,sig_out);
-sig_out=sig_out(1:length(data));
+%filter=fir1(1500,[1.5/(fvz/2)],'low');
+%sig_out=filtfilt(filter,1,sig_out);
+%sig_out=sig_out(1:round(length(data)/10));
 end
