@@ -7,9 +7,13 @@ load('100001_ann_quality_train.mat');
 A=(record(1,1:68120000));
 skok=500;
 fvz=1000;
+pocet_vzorku=100000; % poèet vzorkù od jednotlivých kategorií v množinì pro uèení
 %% výpoèet pøíznakù
 accel_pow=accel(record(2:4,1:6812000),fvz/skok,100); % výkon akcelerometru (bez SS složky)
 power=spektrogram(A,skok); % vytvoøení spektrogramu
+sikmost=skew(A,skok); % vytvoøení skew
+spicatost=kurt(A,skok); % vytvoøení skew
+
 drift=drift_rel(power,skok,fvz,0,2);% zjištìní relativní spektrální mocnosti driftu
 myo=drift_rel(power,skok,fvz,100,fvz/2); % zjištìní relativní spektrální mocnosti VF složek
 rate=HR(A,skok,fvz); % tepová frekvence
@@ -79,12 +83,13 @@ uspesnost(1:3,1)=0;
 % an(1,:)=anotace==1;
 % an(2,:)=anotace==2;
 % an(3,:)=anotace==3;
-pocet_vzorku=100000; % poèet vzorkù od jednotlivých kategorií v množinì pro uèení
+
 
 a_i=1;
 b_i=1;
 c_i=1;
 ind=1;
+anotace_pom=round(resample(anotace,1,skok));
 
 pozice1=int64(find(anotace_pom==1));
 pozice2=int64(find(anotace_pom==2));
@@ -100,7 +105,7 @@ priznak=zeros(6,pocet_vzorku*3);
 
 an=logical(zeros(3,pocet_vzorku*3));
 
-anotace_pom=round(resample(anotace,1,skok));
+
 
 
 
@@ -151,11 +156,13 @@ for(i=1:length(index(1,:)))
         priznak(4,i)=brum(index(2,i));
         priznak(5,i)=rate(index(2,i));
         priznak(6,i)=snr(index(2,i));
+        priznak(7,i)=sikmost(index(2,i));
+        priznak(8,i)=spicatost(index(2,i));
         an(index(1,i),i)=1;
 end
 
-
-
+priznak(:,length(index)+1:end)=[];
+an(:,length(index)+1:end)=[];
 % while((a_i<=pocet_vzorku || b_i<=pocet_vzorku || c_i<=pocet_vzorku)&&(a_i<sum(anotace==1)&&b_i<sum(anotace==2)&&c_i<sum(anotace==3))) % výbìr uèící množiny dat
 %     if(anotace(index)==1 && a_i<=pocet_vzorku)
 %         priznak(1,ind)=drift(index);
@@ -199,10 +206,10 @@ end
 
 
 %% uceni/vybavovani
-sit=patternnet(25); % vytvoøení sítì s 25 skrytými vrstvami
+sit=patternnet(50); % vytvoøení sítì s 25 skrytými vrstvami
 
 sit=train(sit,priznak,an,'useParallel','no'); % uèení sítì na trénovací množinì
-FF=sit([drift; myo;accel_pow;brum;rate;snr],'useParallel','no'); % vybavení sítì ze vstupu pøíznakù
+FF=sit([drift; myo;accel_pow;brum;rate;snr;sikmost;spicatost],'useParallel','no'); % vybavení sítì ze vstupu pøíznakù
 
 
 

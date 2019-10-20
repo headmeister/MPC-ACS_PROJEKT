@@ -2,10 +2,15 @@ function[power]=spektrogram(data,skok) %vytvaøí spektrogram bez pøekrývání z vek
 n=1;
 power(1:length(data))=0;
 while((n+skok)<length(data))
-    power(n:n+skok)=abs(fft(data(n:n+skok))).^2;
+    pom=data(n:n+skok-1);
+    pom=pom.*gausswin(skok)';
+    power(n:n+skok-1)=abs(fft(pom)).^2;
     power(n)=0.001; % odstranìní SS složky má pramalý vliv na hodnocení kvality EKG
     n=n+skok;
 end
-power(n:end)=abs(fft(data(n:end))).^2;
-
+if(n<length(data))
+pom=data(n:end);
+pom=pom.*gausswin(length(data)-n+1)';
+power(n:end)=abs(fft(pom)).^2;
+end
 end

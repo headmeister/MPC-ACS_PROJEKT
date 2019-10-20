@@ -7,7 +7,7 @@ n=1;
 rel_power(1:round(length(power))/skok)=0;
 ind=int32(1);
 while((n+skok)<length(power))
-    rel_power(ind)=sum(power(n+index2:n+index))/sum(power(n:n+skok));
+    rel_power(ind)=sum(power(n+index2:n+index))/sum(power(n:n+skok-1));
     n=n+skok;
     ind=ind+1;
 end
