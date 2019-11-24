@@ -1,32 +1,75 @@
 function[sig_out]=HR(data,skok,fvz) % vstup data-EKG, fvz-vzorkovací frekvence, skok- decimace odpovídající výpoètu spektrogramu (výstup prùbìh tepové frekvence)
-
-filter=fir1(1000,[8/(fvz/2) 20/(fvz/2)],'bandpass');
+decim=1/(40/fvz);
+fvz=fvz/decim;
+data=resample(data,1,decim);
+filter=fir1(26,8/(fvz/2),'high');
 data=filtfilt(filter,1,data);
 data=abs(hilbert(data)).^2;
+skok1=200;
+prah(1:floor((length(data)-fvz*10)/skok1)+1)=single(0);
 
-m=median(data);
-s=std(data);
+mm=median(single(data));
+s=std(single(data));
+%% stanovení adaptivního prahu pro QRS detekci
 
-prah=m+3*s;
-
-%% detekce QRS
-[vel,lok]=findpeaks(data); 
-
-lok(vel<prah)=[];
-lok=lok./fvz;
-
-%% vytvoøení vektoru RR interval
-RR(1:length(lok)-1)=0;
-for(i=2:length(lok)) 
-RR(i-1)= lok(i)-lok(i-1);   
-
+parfor(i=0:floor((length(data)-fvz*10-1)/skok1))
+    
+    m=max(data(1+i*skok1:1+skok1*i+fvz*10));
+    if(2/3*m>(mm+s))
+        
+    prah(i+1)=2/3*m;
+    else
+      prah(i+1)=mm+s;  
+    end
 end
+
+prah(prah==0)=prah(round((length(data)-fvz*10)/skok1));
+
+
+%% detekce QRS s adaptivním prahem
+delka=length(data);
+[vel,lok]=findpeaks(data);
+lok=single(lok);
+vel=single(vel);
+clear data;
+parfor(i=1:length(lok))
+    if(ceil(lok(i)/skok1)<length(prah))
+        if(vel(i)<prah(ceil(lok(i)/skok1)))
+            lok(i)=0;
+        end
+    else
+        if(vel(i)<prah(end))
+            lok(i)=0;
+        end
+    end
+    
+    
+end
+%clear data;
+vel(lok==0)=[];
+lok(lok==0)=[];
+
+
+clear vel;
+clear prah;
+%% vytvoøení vektoru RR interval
+RR1(1:length(lok)-1)=int32(0);
+i=int32(1);
+lok=lok./fvz;
+parfor(i=2:length(lok))
+    RR1(i-1)= lok(i)-lok(i-1);
+    
+end
+
+RR=double(RR1);
+
 lok(1)=0;
-RR=[RR(1) RR RR(end)];
-lok=[lok (length(data)/fvz-1/fvz)];
+
+RR=[RR RR(end)];
+lok(end)=(delka/fvz-1/fvz);
 
 %% úprava výsledného signálu tepové frekvence
-sig_out=resample(RR,lok,fvz/skok,'spline'); % pøevzorkování na shodnou fvz jako ostatní pøíznaky
+sig_out=resample(RR,double(lok),fvz/(skok/decim)); % pøevzorkování na shodnou fvz jako ostatní pøíznaky
 sig_out=60./sig_out; % pøevod na TF  [/min]
 
 
