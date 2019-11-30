@@ -9,6 +9,7 @@ load('105001_ann_quality_train.mat');
 an=[an anotace];
 load('111001_ann_quality_train.mat');
 anotace=int8([an anotace]);
+
 %plot(record(1,:));
 A1=(record(1,1:68120000));
 Acc=record(2:4,1:6812000);
@@ -25,16 +26,31 @@ clear A1;
 clear an;
 
 
-
-skok=500;
+skok=1000;
 fvz=1000;
 pocet_vzorku=100000; % poèet vzorkù od jednotlivých kategorií v množinì pro uèení
 progress=0;
+A=A-mean(A);
+%% uprava dat akcelerometru
+
+filter=fir1(500,[0.7/(100/2)],'high');
+
+Acc(1,:)=filtfilt(filter,1,Acc(1,:));
+Acc(2,:)=filtfilt(filter,1,Acc(2,:));
+Acc(3,:)=filtfilt(filter,1,Acc(3,:));
+
+
+%data=data-mean(vyk);
+
+vyk=sqrt(Acc(1,:).^2+Acc(2,:).^2+Acc(3,:).^2);
+clear Acc;
 %% výpoèet pøíznakù
-accel_pow=accel(Acc,fvz/skok,100); % odhad úrovnì akcelerace akcelerometru (bez SS složky)
+accel_pow=accel(vyk,fvz/skok,100); % odhad úrovnì akcelerace akcelerometru (bez SS složky)
+accel_prum=skew(vyk,round(skok/(fvz/100)),1);
+accel_std=skew(vyk,round(skok/(fvz/100)),2);
 progress=progress+10;
 disp(['Progress: ' num2str(progress) '%']);
-clear Acc;
+%clear Acc;
 
 snr=SNR(A,skok,fvz); % odhad SNR
 progress=progress+10;
@@ -48,41 +64,45 @@ disp(['Progress: ' num2str(progress) '%']);
 power=spektrogram(A,skok); % vytvoøení spektrogramu
 progress=progress+10;
 disp(['Progress: ' num2str(progress) '%']);
-sikmost=skew(A,skok); % vytvoøení skew
+sikmost=skew(A,skok,3); % vytvoøení skew
 %clear A;
 progress=progress+10;
 disp(['Progress: ' num2str(progress) '%']);
-%spicatost=kurt(A,skok); % vytvoøení skew
+spicatost=skew(A,skok,4); % vytvoøení kurtosis
 
 drift=drift_rel(power,skok,fvz,0,2);% zjištìní relativní spektrální mocnosti driftu
-progress=progress+10;
+progress=progress+5;
 disp(['Progress: ' num2str(progress) '%']);
 myo=drift_rel(power,skok,fvz,100,fvz/2); % zjištìní relativní spektrální mocnosti VF složek
-progress=progress+10;
+progress=progress+5;
 disp(['Progress: ' num2str(progress) '%']);
 brum=drift_rel(power,skok,fvz,49,51); % zjištìní relativní spektrální mocnosti 50 Hz složky
-progress=progress+10;
+progress=progress+5;
 disp(['Progress: ' num2str(progress) '%']);
+
+
 
 % diference=abs(diff(rate));
 
-delka=min([length(accel_pow),length(sikmost),length(drift),length(myo),length(rate),length(brum),length(diference)]);
+delka=min([length(accel_pow),length(accel_prum),length(accel_std),length(sikmost),length(spicatost),length(drift),length(myo),length(rate),length(brum)]);
 
 accel_pow=accel_pow(1:delka);
-accel_pow=(accel_pow-mean(accel_pow))/std(accel_pow);
+accel_prum=accel_prum(1:delka);
+accel_std=accel_std(1:delka);
+%accel_pow=(accel_pow-mean(accel_pow))/std(accel_pow);
 sikmost=sikmost(1:delka);
-sikmost=(sikmost-mean(sikmost))/std(sikmost);
-%spicatost=spicatost(1:delka);
+%sikmost=(sikmost-mean(sikmost))/std(sikmost);
+spicatost=spicatost(1:delka);
 drift=drift(1:delka);
-drift=(drift-mean(drift))/std(drift);
+%drift=(drift-mean(drift))/std(drift);
 myo=myo(1:delka);
-myo=(myo-mean(myo))/std(myo);
+%myo=(myo-mean(myo))/std(myo);
 rate=rate(1:delka);
-rate=(rate-mean(rate))/std(rate);
+%rate=(rate-mean(rate))/std(rate);
 brum=brum(1:delka);
-brum=(brum-mean(brum))/std(brum);
+%brum=(brum-mean(brum))/std(brum);
 snr=snr(1:delka);
-snr=(snr-mean(snr))/std(snr);
+%snr=(snr-mean(snr))/std(snr);
 
 % diference=diference(1:delka);
 % diference=(diference-mean(diference))/std(diference);
@@ -104,7 +124,7 @@ maxima(1)=length(pozice1);
 maxima(2)=length(pozice2);
 maxima(3)=length(pozice3);
 
-priznak=zeros(7,pocet_vzorku*3);
+priznak=zeros(10,pocet_vzorku*3);
 
 
 an=logical(zeros(3,pocet_vzorku*3));
@@ -160,7 +180,9 @@ for(i=int64(1:length(index(1,:))))
         priznak(5,i)=rate(index(2,i));
         priznak(6,i)=snr(index(2,i));
         priznak(7,i)=sikmost(index(2,i));
-       % priznak(8,i)=diference(index(2,i));
+        priznak(8,i)=spicatost(index(2,i));
+        priznak(9,i)=accel_prum(index(2,i));
+        priznak(10,i)=accel_std(index(2,i));
         an(index(1,i),i)=1;
 end
 
@@ -169,37 +191,49 @@ an(:,length(index)+1:end)=[];
 
 priznak(isnan(priznak))=0;
 %% uceni/vybavovani
-progress=progress+10;
+progress=progress+5;
 disp(['Progress: ' num2str(progress) '%']);
 
-sit=patternnet(8); % vytvoøení sítì s n skrytými neurony
-
+sit=patternnet([30 10]); % vytvoøení sítì s n skrytými neurony
+sit.trainParam.max_fail=500;
+sit.trainParam.mu=0.00001;
+sit.trainParam.mu_dec=0.00001;
+sit.trainParam.mu_inc=0.00002;
+sit.trainParam.epochs=10000;
 sit=train(sit,priznak,an,'useParallel','yes'); % uèení sítì na trénovací množinì
-FF=sit([drift;myo;accel_pow;brum;rate;snr;sikmost],'useParallel','yes'); % vybavení sítì ze vstupu pøíznakù
+FF=sit([drift;myo;accel_pow;brum;rate;snr;sikmost;spicatost;accel_prum;accel_std],'useParallel','yes'); % vybavení sítì ze vstupu pøíznakù
 
 progress=progress+10;
 disp(['Progress: ' num2str(progress) '%']);
 
-    pom=FF(1,:)+FF(2,:)*2+FF(3,:)*3;
+    kval=FF(1,:)+FF(2,:)*2+FF(3,:)*3;
 disp('vybaveno'); 
     
     
-  matrix(1:length(pom)-2,1:3)=0;
-  for(i=2:length(pom)-1)
-      matrix(i-1,:)=pom(i-1:i+1);
+  
+   matrix(1:length(kval)-2,1:3)=0;
+  for(i=2:length(kval)-1)
+      matrix(i-1,:)=kval(i-1:i+1);
+      
+      
   end  
-   
-    
-   kval=evalfis(matrix,fis);
-   kval=[pom(1)', kval', pom(end)'];
+  
+kval(2:end-1)=evalfis(matrix,fis);
+  
+  
+%kval=[pom(1)', kval', pom(end)'];
     
 progress=progress+10;
 disp(['Progress: ' num2str(progress) '%']);
 disp('FIS evaluace kompletní');    
  %kval= vec2ind(round(FF)); % návrat ke kvalitì
- kval=round(resample(kval,round(length(anotace)/length(FF(1,:))),1)); % pøevzorkování zpìt
+ kval=(resample(kval,round(length(anotace)/length(FF(1,:))),1)); % pøevzorkování zpìt
 % 
 %kval=medfilt1(round(kval),3*skok); % spojení do delších úsekù
+kval(kval>3)=3;
+kval(kval<1)=1;
+
+
 kval(kval==0)=1;
 kval=round(kval);
 
@@ -212,8 +246,9 @@ elseif (length(kval)<length(anotace))
     kval=[kval ppp];
     
 end
-
-
+progress=progress+10;
+disp(['Progress: ' num2str(progress) '%']);
+disp('Hotovo');   
  [uspesnost, uspescnost_cn]=hodnoceni(kval,anotace);
 
 [SE, PP, F1, cov]=F1score(anotace,kval);

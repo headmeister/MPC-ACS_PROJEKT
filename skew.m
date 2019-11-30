@@ -1,4 +1,4 @@
-function[skew]=skew(data,skok) %vytvaøí skew bez pøekrıvání z vektoru data po úsecích o délce skok
+function[skew1]=skew(data,skok,param) %vytvaøí skew bez pøekrıvání z vektoru data po úsecích o délce skok
 n=1;
 
 ind=1;
@@ -14,22 +14,27 @@ data(end:end+pom)=0;
 
 
 data=reshape(data,skok,length(data)/skok);
-skew(1:length(data(1,:)))=0;
-
-skew(1:end-1)=skewness(data(:,1:end-1));
+skew1(1:length(data(1,:)))=0;
+if(param==3)
+skew1(1:end-1)=skewness(data(:,1:end-1));
 pom=data(end,:);
-skew(end)=skewness(pom(pom~=0));
+skew1(end)=skewness(pom(pom~=0));
+elseif (param==4)
+skew1(1:end-1)=kurtosis(data(:,1:end-1));
+pom=data(end,:);
+skew1(end)=kurtosis(pom(pom~=0));  
+
+elseif (param==1)
+skew1(1:end-1)=mean(data(:,1:end-1));
+pom=data(end,:);
+skew1(end)=mean(pom(pom~=0)); 
+
+elseif (param==2)
+skew1(1:end-1)=std(data(:,1:end-1));
+pom=data(end,:);
+skew1(end)=std(pom(pom~=0)); 
+    
+end
 
 
-% while((n+skok)<length(data))
-%     pom=data(n:n+skok-1);
-%     skew(ind)=skewness(pom);
-%     ind=ind+1;
-%     n=n+skok;
-% end
-% 
-% if(n<length(data))
-% pom=data(n:end);
-% skew(ind)=skewness(pom);
-% end
 end

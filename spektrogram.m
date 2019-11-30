@@ -13,7 +13,6 @@ function[power]=spektrogram(data,skok) %vytvaøí spektrogram bez pøekrývání z vek
 % pom=pom.*gausswin(length(data)-n+1)';
 % power(n:end)=abs(fft(pom)).^2;
 % end
-
 power=abs(spectrogram(data,skok,0,skok)).^2;
 
 end
