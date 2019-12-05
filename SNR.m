@@ -1,19 +1,16 @@
-function[SNR]=SNR(data,skok1,fvz) %Funkce pro odhad SNR na základì odhadu spektrálních složek užiteèného signálu a šumu( 50Hz, 0-2Hz,70-fvz Hz)
+function[SNR]=SNR(data,skok1,fvz) %Funkce pro odhad SNR na základì filtrace signálu pomocí SWT
+% data- signál EKG
+% vstupy: skok1= okno resp decimace vstupního signálu
+% fvz- vzorkovací fce signálu
 decim=round(1/(500/fvz));
 fvz=fvz/decim;
 data=resample(data,1,decim);
 filter=fir1(500,[2/(fvz/2)],'high');
 data=filtfilt(filter,1,data);
 
-% filter=fir1(500,[70/(fvz/2)],'low');
-% filter2=fir1(500,[49/(fvz/2) 51/(fvz/2)],'stop');
-% H=fft(filter).*fft(filter2);
-% h=fftshift(ifft(H));
-% data2=filtfilt(h,1,data);
-
 vlnka = 'sym4';
 stup_rozk = 4;
-fragmentace=16;
+fragmentace=8;
 for(i=0:2^stup_rozk*fragmentace)
     if(mod(length(data)+i,2^stup_rozk*fragmentace)==0)
         
@@ -32,7 +29,7 @@ for(i=1:fragmentace)
     prahy=single(SWC);
     %% prahovani
     skok=500000;
-    konstanta=0.6745*sqrt(2*log(length(SWC(1,:))))*0.82;
+    konstanta=0.0890;
     for(j=1:skok:length(SWC(1,:))-skok)
         prahy(1:stup_rozk,j:j+skok)=repmat(median(abs(SWC(1:stup_rozk,j:j+skok)),2)/konstanta,1,skok+1);
     end

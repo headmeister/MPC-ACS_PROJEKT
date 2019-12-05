@@ -1,7 +1,7 @@
-function[skew1]=skew(data,skok,param) %vytvaøí skew bez pøekrývání z vektoru data po úsecích o délce skok
-n=1;
-
-ind=1;
+function[skew1]=skew(data,skok,param) % výstup statistické momenty v oknì bez pøekrývání z vektoru data po úsecích o délce skok
+%vstup- data (signál)
+%skok- delka okna (stupeò decimace)
+%param - statistický moment (1-prùmìr,2-std, 3-skew, 4- kurtosis)
 for(i=0:skok)
     if(mod(length(data)+i,skok)==0)
         
